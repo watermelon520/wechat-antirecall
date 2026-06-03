@@ -35,6 +35,7 @@ constexpr RevokeHookConfig revokeHookConfigs[] = {
     {"268599", 0x47775cc, 0x168, 0x170},
     {"268601", 0x47813f0, 0x168, 0x170},
     {"268602", 0x47856a0, 0x168, 0x170},
+    {"268831", 0x48f6d7c, 0x168, 0x170},
 };
 
 ParseRevokeXML originalParseRevokeXML = nullptr;

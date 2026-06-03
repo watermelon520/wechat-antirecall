@@ -212,6 +212,7 @@ final class RuntimeRewriteTests: XCTestCase {
         XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build("268599"), 0x47775cc)
         XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build("268601"), 0x47813f0)
         XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build("268602"), 0x47856a0)
+        XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build("268831"), 0x48f6d7c)
         XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build("268596"), 0)
         XCTAssertEqual(wechat_antirecall_revoke_hook_original_body_for_build(nil), 0)
     }
