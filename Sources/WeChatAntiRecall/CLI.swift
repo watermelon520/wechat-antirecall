@@ -562,6 +562,10 @@ struct CLI {
         var backedUpBinaryPaths = Set<String>()
 
         print("WeChat: \(appInfo.shortVersion) (\(appInfo.buildVersion))")
+        if options.explicitWithTip && !options.runtimeTip {
+            let runtimeTipSupported = RuntimeTipInstaller.supportedBuildVersions.contains(appInfo.buildVersion)
+            fputs(withTipDeprecationNotice(buildVersion: appInfo.buildVersion, runtimeTipSupported: runtimeTipSupported) + "\n", stderr)
+        }
         var modeComponents = selectedTargets.map { displayName(forTargetIdentifier: $0.identifier) }
         if options.runtimeTip {
             modeComponents.append("custom recall tip phrase runtime")
@@ -770,7 +774,7 @@ struct CLI {
 
         Usage:
           wechat-antirecall versions [--app /Applications/WeChat.app] [--config patches.json]
-          wechat-antirecall install  [--app /Applications/WeChat.app] [--config patches.json] [--with-tip] [--runtime-tip] [--runtime-dylib <path>] [--multi-instance] [--block-update] [--update-only] [--dry-run] [--no-backup] [--skip-resign]
+          wechat-antirecall install  [--app /Applications/WeChat.app] [--config patches.json] [--with-tip (deprecated, prefer --runtime-tip)] [--runtime-tip] [--runtime-dylib <path>] [--multi-instance] [--block-update] [--update-only] [--dry-run] [--no-backup] [--skip-resign]
           wechat-antirecall clone    [--app /Applications/WeChat.app] [--output-dir /Applications] [--count 2] [--name-prefix WeChat] [--keep-url-schemes] [--replace] [--dry-run] [--skip-resign]
           wechat-antirecall restore  --backup <path> [--binary Contents/MacOS/WeChat] [--app /Applications/WeChat.app] [--skip-resign]
           wechat-antirecall tip-phrase get
@@ -782,6 +786,10 @@ struct CLI {
         Notes:
           install only patches versions present in patches.json.
           unknown WeChat builds are refused instead of guessed.
+          --with-tip is deprecated; prefer --runtime-tip on supported builds. --with-tip
+          is a pure byte patch with no runtime hook, so it cannot handle your own recalls
+          (they leave a duplicate tip line); --runtime-tip addresses this via its hook.
+          --with-tip still works as a fallback.
         """)
     }
 }
@@ -822,6 +830,10 @@ struct InstallOptions {
     var appPath = defaultAppPath
     var configPath: String?
     var withTip = false
+    // True only when the user passed `--with-tip` themselves, as opposed to `withTip`
+    // being implied by `--runtime-tip`. Drives the deprecation notice so users already
+    // on the recommended `--runtime-tip` path are not nagged.
+    var explicitWithTip = false
     var multiInstance = false
     var blockUpdate = false
     var updateOnly = false
@@ -859,6 +871,7 @@ struct InstallOptions {
                 configPath = try parser.requiredValue(after: argument)
             case "--with-tip":
                 withTip = true
+                explicitWithTip = true
             case "--runtime-tip":
                 runtimeTip = true
                 withTip = true
@@ -894,6 +907,24 @@ struct InstallOptions {
             throw ToolError.usage("--update-only 不能与 --with-tip 同时使用")
         }
     }
+}
+
+// The deprecation notice shown when `--with-tip` is used on its own. `--runtime-tip`
+// supersedes it: only the runtime hook can keep the user's own recalls from leaving a
+// duplicate tip line, which the static `--with-tip` byte patch cannot fix. Returned as
+// a string (rather than printed inline) so it can be unit-tested.
+func withTipDeprecationNotice(buildVersion: String, runtimeTipSupported: Bool) -> String {
+    let header = "警告：--with-tip 已弃用（deprecated），后续版本可能移除。"
+    if runtimeTipSupported {
+        return """
+        \(header)
+        建议改用 --runtime-tip：--with-tip 是纯字节补丁、没有运行时 hook，对你自己撤回的消息会留下重复的撤回提示且无法处理；--runtime-tip 通过运行时 hook 处理这种情况。--with-tip 目前仍可使用。
+        """
+    }
+    return """
+    \(header)
+    当前构建号 \(buildVersion) 暂不支持 --runtime-tip，--with-tip 仍可作为后备使用；注意它是纯字节补丁，对你自己撤回的消息会留下重复的撤回提示且无法处理。
+    """
 }
 
 private func displayName(forTargetIdentifier identifier: String) -> String {
